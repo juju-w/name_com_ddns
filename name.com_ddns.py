@@ -14,18 +14,20 @@ config.read(ini_path, encoding='utf-8')
 def update_ddns():
     config.read(ini_path, encoding="utf-8")
     my_ip = rq.get('https://whois.pconline.com.cn/ipJson.jsp?json=true').json()
-    print('公网ip：%s, 所属：%s' % (my_ip['ip'], my_ip['addr']))
-    if config.get('DDNS', 'last_ip') != my_ip['ip']:
+    now_ip = my_ip['ip']
+    print('公网ip：%s, 所属：%s' % (now_ip, my_ip['addr']))
+    if config.get('DDNS', 'last_ip') != now_ip:
         url = 'https://api.name.com/v4/domains/%s/records/%s' % (
             config.get('DDNS', 'domains'), config.get('DDNS', 'id'))
         post_js = {
             'host': config.get('DDNS', 'host'),
             'type': 'A',
-            'answer': my_ip['ip'],
+            'answer': now_ip,
             'ttl': config.get('DDNS', 'ttl'),
         }
         rq.put(url, auth=(config.get('User', 'username'), config.get('User', 'token')), data=js.dumps(post_js))
     print("ip 更新成功")
+    config.set('DDNS', 'last_ip', now_ip)
 
 
 if sys.argv[1] is None:
@@ -56,14 +58,14 @@ elif sys.argv[1] == 'install':
         print('请求有误，请检查用户名以及token')
         sys.exit()
     for r in data:
-        [rid, ip, ttl] = [r['id'], r['answer']], r['ttl'] if r['fqdn'] == "%s.%s." % (host, domains) and \
+        [rid, ip, ttl] = [r['id'], r['answer'], r['ttl']] if r['fqdn'] == "%s.%s." % (host, domains) and \
                                                              r['type'] == 'A' else ['', '', '']
     if (rid, ip, ttl) == ('', '', ''):
         print('未找到host')
         sys.exit()
-    config.set('DDNS', 'id', rid)
+    config.set('DDNS', 'id', str(rid))
     config.set('DDNS', 'last_ip', ip)
-    config.set('DDNS', 'ttl', ttl)
+    config.set('DDNS', 'ttl', str(ttl))
 
     config.write(open(ini_path, 'w+', encoding='utf-8'))
 
@@ -72,7 +74,7 @@ elif sys.argv[1] == 'install':
     user = os.popen('whoami').read().rstrip()
     python = os.popen('which python').read().rstrip()
     cron_path = '/var/spool/cron/%s' % user
-    os.system("echo %s %s %s >> %s" %
+    os.system("echo '%s %s %s' >> %s" %
               (config.get("Sys", "interval"), python, current_path+'name.com_ddns.py', cron_path))
     print("成功写入定时任务")
 
