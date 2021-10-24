@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import sys
 import json as js
 import os
@@ -8,7 +9,7 @@ current_path = os.path.dirname(os.path.abspath(__file__))
 
 config = configparser.ConfigParser()
 ini_path = "%s/name.com_ddns.ini" % current_path
-
+config.read(ini_path, encoding='utf-8')
 
 def update_ddns():
     config.read(ini_path, encoding="utf-8")
@@ -31,16 +32,19 @@ if sys.argv[1] is None:
     print('python name.com_ddns.py install | update | config | uninstall')
 elif sys.argv[1] == 'install':
     username = input('输入name.com 用户名：')
+    config.add_section('User')
     config.set('User', 'username', username)
     token = input('输入name.com token：')
     config.set('User', 'token', token)
     domains = input('输入name.com 域名【example.com】：')
+    config.add_section('DDNS')
     config.set('DDNS', 'domains', domains)
     host = input('输入name.com 域【www/ddns】：')
     config.set('DDNS', 'host', host)
     interval = input('输入ddns 定时刷新间隔(分钟 1~59)【默认:30】：')
     interval = 30 if interval == '' else interval
     interval = "*/%s  *  *  *  *" % str(interval)
+    config.add_section('Sys')
     config.set('Sys', 'interval', interval)
 
     rid, ip, ttl = '', '', ''
