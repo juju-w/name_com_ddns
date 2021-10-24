@@ -10,7 +10,6 @@ config = configparser.ConfigParser()
 ini_path = "%s/name.com_ddns.ini" % current_path
 
 
-# config.read(current_path + '/name.com_ddns.ini', encoding="utf-8")
 def update_ddns():
     config.read(ini_path, encoding="utf-8")
     my_ip = rq.get('https://whois.pconline.com.cn/ipJson.jsp?json=true').json()
