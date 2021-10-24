@@ -28,6 +28,7 @@ def update_ddns():
         rq.put(url, auth=(config.get('User', 'username'), config.get('User', 'token')), data=js.dumps(post_js))
     print("ip 更新成功")
     config.set('DDNS', 'last_ip', now_ip)
+    config.write(open(ini_path, 'w', encoding='utf-8'))
 
 
 if sys.argv[1] is None:
