@@ -40,7 +40,7 @@ def update_ddns():
 
 
 def write_to_cronfile():
-    user = os.popen('whoami').read().rstrip() if 'centos' in release_os else 'root'
+    user = 'root' if 'openwrt' in release_os else os.popen('whoami').read().rstrip()
     python = os.popen('which python').read().rstrip()
     cron_path = '/var/spool/cron/%s' % user
     os.system("echo '%s %s %s' >> %s update" %
@@ -133,7 +133,7 @@ def name_ddns():
                 config.set('DDNS', choice[ins], rep)
                 config.write(open(ini_path, 'w+', encoding='utf-8'))
     elif sys.argv[1] == 'uninstall':
-        user = os.popen('whoami').read().rstrip() if 'centos' in release_os else 'root'
+        user = 'root' if 'openwrt' in release_os else os.popen('whoami').read().rstrip()
         cron_path = '/var/spool/cron/%s' % user
         os.system("sed -i '/name.com_ddns.py/'d %s" % cron_path)
         print('uninstall complete')
