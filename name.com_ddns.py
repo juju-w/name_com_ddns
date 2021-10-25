@@ -11,6 +11,9 @@ config = configparser.ConfigParser()
 ini_path = "%s/name.com_ddns.ini" % current_path
 config.read(ini_path, encoding='utf-8')
 
+with open('/etc/os-release') as release:
+    info = release.readlines()
+release_os = [info[i] for i in range(len(info)) if 'ID' in info[i]][0].rstrip().split('=')[-1]
 
 def print_help():
     print('Usage:\n\t python name.com_ddns.py { install | update | config | reinstall | uninstall }')
@@ -37,7 +40,7 @@ def update_ddns():
 
 
 def write_to_cronfile():
-    user = os.popen('whoami').read().rstrip()
+    user = os.popen('whoami').read().rstrip() if 'centos' in release_os else 'root'
     python = os.popen('which python').read().rstrip()
     cron_path = '/var/spool/cron/%s' % user
     os.system("echo '%s %s %s' >> %s update" %
@@ -54,17 +57,17 @@ def name_ddns():
     if sys.argv[1] is None:
         print('python name.com_ddns.py install | update | config | uninstall')
     elif sys.argv[1] == 'install':
-        username = input('input your name.com username：')
+        username = input('input your name.com username:')
         config.add_section('User')
         config.set('User', 'username', username)
-        token = input('input your name.com token：')
+        token = input('input your name.com token:')
         config.set('User', 'token', token)
-        domains = input('input your name.com domains [like:example.com]:')
+        domains = input('input your name.com domains [eg:example.com]:')
         config.add_section('DDNS')
         config.set('DDNS', 'domains', domains)
-        host = input('input your name.com host [like:www/ddns]:')
+        host = input('input your name.com host [eg:www or ddns]:')
         config.set('DDNS', 'host', host)
-        interval = input('input your ddns refresh (min:1~59)[default:30 min]：')
+        interval = input('input your ddns refresh (min:1~59)[default:30 min]:')
         interval = 30 if interval == '' else interval
         interval = "*/%s  *  *  *  *" % str(interval)
         config.add_section('Sys')
@@ -130,7 +133,7 @@ def name_ddns():
                 config.set('DDNS', choice[ins], rep)
                 config.write(open(ini_path, 'w+', encoding='utf-8'))
     elif sys.argv[1] == 'uninstall':
-        user = os.popen('whoami').read().rstrip()
+        user = os.popen('whoami').read().rstrip() if 'centos' in release_os else 'root'
         cron_path = '/var/spool/cron/%s' % user
         os.system("sed -i '/name.com_ddns.py/'d %s" % cron_path)
         print('uninstall complete')
