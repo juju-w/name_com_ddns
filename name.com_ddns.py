@@ -11,6 +11,11 @@ config = configparser.ConfigParser()
 ini_path = "%s/name.com_ddns.ini" % current_path
 config.read(ini_path, encoding='utf-8')
 
+
+def print_help():
+    print('Usage:\n\t python name.com_ddns.py { install | update | config | reinstall | uninstall }')
+
+
 def update_ddns():
     config.read(ini_path, encoding="utf-8")
     my_ip = rq.get('https://whois.pconline.com.cn/ipJson.jsp?json=true').json()
@@ -31,86 +36,101 @@ def update_ddns():
     config.write(open(ini_path, 'w', encoding='utf-8'))
 
 
-if sys.argv[1] is None:
-    print('python name.com_ddns.py install | update | config | uninstall')
-elif sys.argv[1] == 'install':
-    username = input('输入name.com 用户名：')
-    config.add_section('User')
-    config.set('User', 'username', username)
-    token = input('输入name.com token：')
-    config.set('User', 'token', token)
-    domains = input('输入name.com 域名【example.com】：')
-    config.add_section('DDNS')
-    config.set('DDNS', 'domains', domains)
-    host = input('输入name.com 域【www/ddns】：')
-    config.set('DDNS', 'host', host)
-    interval = input('输入ddns 定时刷新间隔(分钟 1~59)【默认:30】：')
-    interval = 30 if interval == '' else interval
-    interval = "*/%s  *  *  *  *" % str(interval)
-    config.add_section('Sys')
-    config.set('Sys', 'interval', interval)
-
-    rid, ip, ttl = '', '', ''
-    req_url = "https://api.name.com/v4/domains/%s/records" % domains
-    req = rq.get(req_url, auth=(username, token))
-    if req.status_code == '200':
-        data = req.json()['records']
-    else:
-        print('请求有误，请检查用户名以及token')
-        sys.exit()
-    for r in data:
-        [rid, ip, ttl] = [r['id'], r['answer'], r['ttl']] if r['fqdn'] == "%s.%s." % (host, domains) and \
-                                                             r['type'] == 'A' else ['', '', '']
-    if (rid, ip, ttl) == ('', '', ''):
-        print('未找到host')
-        sys.exit()
-    config.set('DDNS', 'id', str(rid))
-    config.set('DDNS', 'last_ip', ip)
-    config.set('DDNS', 'ttl', str(ttl))
-
-    config.write(open(ini_path, 'w+', encoding='utf-8'))
-
-    update_ddns()
-
+def write_to_cronfile():
     user = os.popen('whoami').read().rstrip()
     python = os.popen('which python').read().rstrip()
     cron_path = '/var/spool/cron/%s' % user
-    os.system("echo '%s %s %s' >> %s" %
-              (config.get("Sys", "interval"), python, current_path+'name.com_ddns.py', cron_path))
+    os.system("echo '%s %s %s' >> %s update" %
+              (config.get("Sys", "interval"), python, os.path.join(current_path, 'name.com_ddns.py'), cron_path))
     print("成功写入定时任务")
 
-elif sys.argv[1] == 'update':
-    update_ddns()
 
-elif sys.argv[1] == 'config':
-    while 1:
+def name_ddns():
+    if sys.argv[1] is None:
+        print('python name.com_ddns.py install | update | config | uninstall')
+    elif sys.argv[1] == 'install':
+        username = input('输入name.com 用户名：')
+        config.add_section('User')
+        config.set('User', 'username', username)
+        token = input('输入name.com token：')
+        config.set('User', 'token', token)
+        domains = input('输入name.com 域名【example.com】：')
+        config.add_section('DDNS')
+        config.set('DDNS', 'domains', domains)
+        host = input('输入name.com 域【www/ddns】：')
+        config.set('DDNS', 'host', host)
+        interval = input('输入ddns 定时刷新间隔(分钟 1~59)【默认:30】：')
+        interval = 30 if interval == '' else interval
+        interval = "*/%s  *  *  *  *" % str(interval)
+        config.add_section('Sys')
+        config.set('Sys', 'interval', interval)
+
+        rid, ip, ttl = '', '', ''
+        req_url = "https://api.name.com/v4/domains/%s/records" % domains
+        req = rq.get(req_url, auth=(username, token))
+        if req.status_code == 200:
+            data = req.json()['records']
+        else:
+            print('请求有误，请检查用户名以及token')
+            sys.exit()
+        for r in data:
+            [rid, ip, ttl] = [r['id'], r['answer'], r['ttl']] if r['fqdn'] == "%s.%s." % (host, domains) and \
+                                                                 r['type'] == 'A' else ['', '', '']
+        if (rid, ip, ttl) == ('', '', ''):
+            print('未找到host')
+            sys.exit()
+        config.set('DDNS', 'id', str(rid))
+        config.set('DDNS', 'last_ip', ip)
+        config.set('DDNS', 'ttl', str(ttl))
+        config.write(open(ini_path, 'w+', encoding='utf-8'))
+        update_ddns()
+        write_to_cronfile()
+    elif sys.argv[1] == 'reinstall':
         config.read(ini_path, encoding='utf-8')
         try:
-            config.get('User', 'username')
-            print("username: %s" % config.get('User', 'username'))
-            print("token: %s" % config.get('User', 'token'))
-            print("domains: %s" % config.get('DDNS', 'domains'))
-            print("host: %s" % config.get('DDNS', 'host'))
+            config.get('DDNS', 'id')
+            write_to_cronfile()
         except Exception:
-            print('请先安装')
+            print('请先安装获取id值')
+            print_help()
             sys.exit()
-        choice = ['username', 'token', 'domains', 'host', 'quit']
-        print('\n'.join(['[%i]: %s' % (i, choice[i]) for i in range(len(choice))]))
-        ins = int(input('请选择要修改的参数：'))
-        if choice[ins] == 'quit':
-            sys.exit()
-        elif choice[ins] in ['username', 'token']:
-            rep = input('更改值：')
-            config.set('User', choice[ins], rep)
-        elif choice[ins] in ['domains', 'host']:
-            rep = input('更改值：')
-            config.set('DDNS', choice[ins], rep)
+    elif sys.argv[1] == 'update':
+        update_ddns()
+    elif sys.argv[1] == 'config':
+        while 1:
+            config.read(ini_path, encoding='utf-8')
+            try:
+                config.get('User', 'username')
+                print("username: %s" % config.get('User', 'username'))
+                print("token: %s" % config.get('User', 'token'))
+                print("domains: %s" % config.get('DDNS', 'domains'))
+                print("host: %s" % config.get('DDNS', 'host'))
+            except Exception:
+                print('请先安装')
+                print_help()
+                sys.exit()
+            choice = ['username', 'token', 'domains', 'host', 'quit']
+            print('\n'.join(['[%i]: %s' % (i, choice[i]) for i in range(len(choice))]))
+            ins = int(input('请选择要修改的参数：'))
+            if choice[ins] == 'quit':
+                sys.exit()
+            elif choice[ins] in ['username', 'token']:
+                rep = input('更改值：')
+                config.set('User', choice[ins], rep)
+                config.write(open(ini_path, 'w+', encoding='utf-8'))
+            elif choice[ins] in ['domains', 'host']:
+                rep = input('更改值：')
+                config.set('DDNS', choice[ins], rep)
+                config.write(open(ini_path, 'w+', encoding='utf-8'))
+    elif sys.argv[1] == 'uninstall':
+        user = os.popen('whoami').read().rstrip()
+        cron_path = '/var/spool/cron/%s' % user
+        os.system("sed -i '/name.com_ddns.py/'d %s" % cron_path)
+        print('卸载完成')
+    else:
+        print('input invalid')
+        print_help()
 
 
-elif sys.argv[1] == 'uninstall':
-    user = os.popen('whoami').read().rstrip()
-    cron_path = '/var/spool/cron/%s' % user
-    os.system("sed -i '/name.com_ddns.py/'d %s" % cron_path)
-    print('卸载完成')
-else:
-    print('input invalid')
+if __name__ == '__main__':
+    name_ddns()
