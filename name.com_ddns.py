@@ -83,8 +83,34 @@ elif sys.argv[1] == 'update':
     update_ddns()
 
 elif sys.argv[1] == 'config':
-    pass
+    while 1:
+        config.read(ini_path, encoding='utf-8')
+        try:
+            config.get('User', 'username')
+            print("username: %s" % config.get('User', 'username'))
+            print("token: %s" % config.get('User', 'token'))
+            print("domains: %s" % config.get('DDNS', 'domains'))
+            print("host: %s" % config.get('DDNS', 'host'))
+        except Exception:
+            print('请先安装')
+            sys.exit()
+        choice = ['username', 'token', 'domains', 'host', 'quit']
+        print('\n'.join(['[%i]: %s' % (i, choice[i]) for i in range(len(choice))]))
+        ins = int(input('请选择要修改的参数：'))
+        if choice[ins] == 'quit':
+            sys.exit()
+        elif choice[ins] in ['username', 'token']:
+            rep = input('更改值：')
+            config.set('User', choice[ins], rep)
+        elif choice[ins] in ['domains', 'host']:
+            rep = input('更改值：')
+            config.set('DDNS', choice[ins], rep)
+
+
 elif sys.argv[1] == 'uninstall':
-    pass
+    user = os.popen('whoami').read().rstrip()
+    cron_path = '/var/spool/cron/%s' % user
+    os.system("sed -i '/name.com_ddns.py/'d %s" % cron_path)
+    print('卸载完成')
 else:
     print('input invalid')
