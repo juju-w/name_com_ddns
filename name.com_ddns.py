@@ -40,7 +40,7 @@ def update_ddns():
 
 
 def write_to_cronfile():
-    user = 'root' if 'openwrt' in release_os else os.popen('whoami').read().rstrip()
+    user = 'crontabs/root' if 'openwrt' in release_os else os.popen('whoami').read().rstrip()
     python = os.popen('which python').read().rstrip()
     cron_path = '/var/spool/cron/%s' % user
     os.system("echo '%s %s %s' >> %s update" %
