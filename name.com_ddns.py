@@ -46,6 +46,11 @@ def write_to_cronfile():
 
 
 def name_ddns():
+    try:
+        sys.argv[1]
+    except Exception:
+        print_help()
+        sys.exit()
     if sys.argv[1] is None:
         print('python name.com_ddns.py install | update | config | uninstall')
     elif sys.argv[1] == 'install':
