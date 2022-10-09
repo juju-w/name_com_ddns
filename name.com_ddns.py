@@ -81,9 +81,10 @@ def name_ddns():
         else:
             print('request failed, please check your username and token ')
             sys.exit()
+        [rid, ip, ttl] = ['', '', '']
         for r in data:
-            [rid, ip, ttl] = [r['id'], r['answer'], r['ttl']] if r['fqdn'] == "%s.%s." % (host, domains) and \
-                                                                 r['type'] == 'A' else ['', '', '']
+            if r['fqdn'] == "%s.%s." % (host, domains) and r['type'] == 'A':
+                [rid, ip, ttl] = [r['id'], r['answer'], r['ttl']]
         if (rid, ip, ttl) == ('', '', ''):
             print('can not find your host')
             sys.exit()
